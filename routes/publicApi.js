@@ -18,7 +18,7 @@ router.get('/verifyemail/:token', user.verifyEmail);
 router.post('/login', user.login);
 
 /* To recover password. */
-router.post('/forgotpassword', user.forgotPassword);
+router.post('/forgotPassword', user.forgotPassword);
 
 /* To reset password. */
 router.post('/resetpassword', user.resetPassword);
@@ -32,5 +32,10 @@ router.post('/logout',user.logout);
 
 router.post('/viewProfile', user.viewProfile);
 router.post('/login',user.login);
+router.post('/updateForgotPassword',user.updateForgotPassword);
+
+
+
+
 
 module.exports = router;

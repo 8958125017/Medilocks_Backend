@@ -26,6 +26,8 @@ var Pharmacy = require("../models/pharmacy.js");
 var Lab = require("../models/lab.js");
 var mailer = require("nodemailer");
 var saltRounds=12;
+// var Hospital = require("../models/token");
+var Token = require("../models/token");
 
 /*________________________________________________________________________
  * @Date:      	10 Nov,2017
@@ -397,35 +399,326 @@ function loginfunction(req,res,requestType,email,password,callback){
  * @Purpose:    This function is used when user forgots password.
  _________________________________________________________________________
  */
-var forgotPassword = function (req, res) {
-    crypto.randomBytes(10, function (err, buf) {
-        var token = buf.toString('hex');
-        User.findOne({email: req.body.email}, function (err, data) {
-            if (err) {
-                res.status(HttpStatus.NON_AUTHORITATIVE_INFORMATION).send({msg: 'Please enter a valid email.',status:HttpStatus.NON_AUTHORITATIVE_INFORMATION});
-            } else if (!data) {
-                res.status(HttpStatus.NON_AUTHORITATIVE_INFORMATION).send({msg: 'Email does not exist.',status:HttpStatus.NON_AUTHORITATIVE_INFORMATION});
-            } else {
-                if (data) {
-                    data.resetPasswordToken = token,
-                    data.resetPasswordExpires = Date.now() + 3600000;
+// var forgotPassword = function (req, res) {
+//     crypto.randomBytes(10, function (err, buf) {
+//         var token = buf.toString('hex');
+//         User.findOne({email: req.body.email}, function (err, data) {
+//             if (err) {
+//                 res.status(HttpStatus.NON_AUTHORITATIVE_INFORMATION).send({msg: 'Please enter a valid email.',status:HttpStatus.NON_AUTHORITATIVE_INFORMATION});
+//             } else if (!data) {
+//                 res.status(HttpStatus.NON_AUTHORITATIVE_INFORMATION).send({msg: 'Email does not exist.',status:HttpStatus.NON_AUTHORITATIVE_INFORMATION});
+//             } else {
+//                 if (data) {
+//                     data.resetPasswordToken = token,
+//                     data.resetPasswordExpires = Date.now() + 3600000;
+//
+//                     data.save(function (err, data) {
+//                         if (err) {
+//                             res.status(HttpStatus.NON_AUTHORITATIVE_INFORMATION).send({msg: 'Something went wrong.',status:HttpStatus.NON_AUTHORITATIVE_INFORMATION});
+//                         } else {
+//                             Mail.resetPwdMail(req.body, token, function (msg) {
+//                                 console.log('Reset password mail sent successfully.')
+//                             });
+//                         }
+//                         res.status(HttpStatus.OK).send({msg: 'Email sent successfully.',status:HttpStatus.OK});
+//                     });
+//                 }
+//             }
+//         });
+//
+//     });
+// };
 
-                    data.save(function (err, data) {
-                        if (err) {
-                            res.status(HttpStatus.NON_AUTHORITATIVE_INFORMATION).send({msg: 'Something went wrong.',status:HttpStatus.NON_AUTHORITATIVE_INFORMATION});
-                        } else {
-                            Mail.resetPwdMail(req.body, token, function (msg) {
-                                console.log('Reset password mail sent successfully.')
-                            });
-                        }
-                        res.status(HttpStatus.OK).send({msg: 'Email sent successfully.',status:HttpStatus.OK});
-                    });
+
+
+
+var forgotPassword=function(req,res){
+  var email=req.body.email;
+  var requestType = req.body.requestType;
+  var token=Math.floor(Math.random()*100000000);
+  if(!email || !requestType){
+      return res.json({message:"invalid parameter",status:400})
+  }
+  var smtpTransport = mailer.createTransport("SMTP",{
+      service: "Gmail",
+      auth: {
+          user: "vivekshengupta011@gmail.com",
+          pass: "m*nukumar"
+      }
+  });
+  var obj={
+    email:email,
+    token:token,
+    requestType:req.body.requestType,
+    expire_at:new Date().getTime()+1000000
+  }
+
+  switch(requestType){
+    case "doctor" :
+            Doctor.findOne({email: email},function(err, doctor) {
+              if (err)  return res.json({ "message": "Error to find Doctor", status: 400});
+              if (!doctor) return res.json({"message": "Please enter registered email!",status: 400});
+              var mail = {
+                  from: "Medilocks <vivekshengupta011@gmail.com>",
+                  to: email,
+                  subject: 'Regarding Medilocks update password',
+                  text: 'Update Password Link:http://103.201.142.41:5006/updatePassword/'+token,
+              }
+
+
+                Token.create(obj,function(err,data){
+                  if(err) return res.send({message:"Error to update",status:400})
+              smtpTransport.sendMail(mail, function(error, response){
+                  if(error){
+                      console.log(error);
+                  }
+                  smtpTransport.close();
+                  return res.json({message:"Check your mail",status:200,data:data})
+              });
+                })
+           });
+
+       break;
+
+    case "patient" :
+                Patient.findOne({email: email},function(err, patient) {
+                if (err) return res.json({"message": "Error to find patient",status: 400});
+                if (!patient) return res.json({"message": "Please enter registered email!",status: 400});
+                var mail = {
+                    from: "Medilocks <vivekshengupta011@gmail.com>",
+                    to: email,
+                    subject: 'Regarding Medilocks update password',
+                    text: 'Update Password Link:http://103.201.142.41:5006/updatePassword/'+token,
                 }
-            }
-        });
 
-    });
-};
+
+                  Token.create(obj,function(err,data){
+                    if(err) return res.send({message:"Error to update",status:400})
+                smtpTransport.sendMail(mail, function(error, response){
+                    if(error){
+                        console.log(error);
+                    }
+                    smtpTransport.close();
+                    return res.json({message:"Check your mail",status:200,data:data})
+                });
+                  })
+               })
+     break;
+    case "hospital" :
+                    Hospital.findOne({email: email},function(err, hospital) {
+                      console.log("hospital",hospital);
+                       if (err) return res.json({"message": "Error to find hospital",status: 400});
+                       if (!hospital) return res.json({"message": "Please enter registered email!",status: 400});
+                       var mail = {
+                           from: "Medilocks <vivekshengupta011@gmail.com>",
+                           to: email,
+                           subject: 'Regarding Medilocks update password',
+                           text: 'Update Password Link:http://103.201.142.41:5006/updatePassword/'+token,
+                       }
+
+
+                         Token.create(obj,function(err,data){
+                           if(err) return res.send({message:"Error to update",status:400})
+                       smtpTransport.sendMail(mail, function(error, response){
+                           if(error){
+                               console.log(error);
+                           }
+                           smtpTransport.close();
+                           return res.json({message:"Check your mail",status:200,data:data})
+                       });
+                         })
+                   })
+    break;
+
+    case "labs" :
+                Lab.findOne({email: email},function(err, lab) {
+                   if (err) return res.json({"message": "Error to find lab",status: 400});
+                   if (!lab)return res.json({"message": "Please enter registered email!",status: 400});
+                   var mail = {
+                       from: "Medilocks <vivekshengupta011@gmail.com>",
+                       to: email,
+                       subject: 'Regarding Medilocks update password',
+                       text: 'Update Password Link:http://103.201.142.41:5006/updatePassword/'+token,
+                   }
+
+
+                     Token.create(obj,function(err,data){
+                       if(err) return res.send({message:"Error to update",status:400})
+                   smtpTransport.sendMail(mail, function(error, response){
+                       if(error){
+                           console.log(error);
+                       }
+                       smtpTransport.close();
+                       return res.json({message:"Check your mail",status:200,data:data})
+                   });
+                     })
+               });
+    break;
+
+    case "pharmacy" :
+            Pharmacy.findOne({email: email},function(err, pharmacy) {
+               if (err) return res.json({ "message": "Error to find Doctor",status: 400});
+               if (!pharmacy) return res.json({"message": "Please enter registered email!",status: 400});
+               var mail = {
+                   from: "Medilocks <vivekshengupta011@gmail.com>",
+                   to: email,
+                   subject: 'Regarding Medilocks update password',
+                   text: 'Update Password Link:http://103.201.142.41:5006/updatePassword/'+token,
+               }
+                 Token.create(obj,function(err,data){
+                   if(err) return res.send({message:"Error to update",status:400})
+               smtpTransport.sendMail(mail, function(error, response){
+                   if(error){
+                       console.log(error);
+                   }
+                   smtpTransport.close();
+                   return res.json({message:"Check your mail",status:200,data:data})
+               });
+                 })
+           })
+    break;
+
+   case 'admin':
+       if(email === CONST.adminCred.email && password === CONST.adminCred.password) return res.send({status:200, message :"Good Job!.", data : {requestType : requestType,email : email,password: password}});
+       else return res.send({status:400, message :"Sorry!. Incorrect email and password!."});
+   break;
+
+    default :
+    break;
+  }
+}
+
+
+
+
+
+
+
+
+function updateForgotPassword(req,res){
+  var password=req.body.password;
+  var confirmPassword=req.body.confirmPassword;
+  var token=req.body.token;
+  var expiryTime = new Date().getTime();
+  if(password!=confirmPassword) return res.json({ "message": "Password doen't match!", status: 400});
+Token.findOne({token:token,expire_at:{$gte:expiryTime}})
+.then((success)=>{
+  if(success)
+  {
+    switch(success.requestType){
+     case "doctor" :
+     Doctor.findOne({email:success.email},function(err, doctor) {
+               if (err)  return res.json({ "message": "Error to find Doctor", status: 400});
+               if (!doctor) return res.json({"message": "Please enter registered email!",status: 400});
+      else{var query= {email:doctor.email}
+      bcrypt.genSalt(saltRounds, function(err, salt) {
+            bcrypt.hash(password,salt,null, function(err, hash) {
+              if(err) return res.send({status : 400, message : "error to get password hash"});
+              else {
+                Doctor.updateOne(query,{$set:{password:hash,token:''}},function(err,result){
+                  if(err) return res.send({status : 400, message : "db failed!"});
+                  return res.send({status : 200, message : "Password Updated successfully!"});
+
+                })
+              }
+            })
+          })
+        }
+          });
+break;
+case "patient" :
+Patient.findOne({email:success.email},function(err, patient) {
+           if (err)  return res.json({ "message": "Error to find Doctor", status: 400});
+           if (!patient) return res.json({"message": "Please enter registered email!",status: 400});
+  else{var query= {email:patient.email}
+  bcrypt.genSalt(saltRounds, function(err, salt) {
+        bcrypt.hash(password,salt,null, function(err, hash) {
+          if(err) return res.send({status : 400, message : "error to get password hash"});
+          else {
+            Patient.updateOne(query,{$set:{password:hash,token:''}},function(err,result){
+              if(err) return res.send({status : 400, message : "db failed!"});
+              return res.send({status : 200, message : "Password Updated successfully!"});
+
+            })
+          }
+      });
+  })
+  }
+})
+break;
+case "hospital" :
+Hospital.findOne({email:success.email},function(err, hospital) {
+          if (err)  return res.json({ "message": "Error to find Doctor", status: 400});
+          if (!hospital) return res.json({"message": "Please enter registered email!",status: 400});
+else{var query= {email:hospital.email}
+bcrypt.genSalt(saltRounds, function(err, salt) {
+       bcrypt.hash(password,salt,null, function(err, hash) {
+         if(err) return res.send({status : 400, message : "error to get password hash"});
+         else {
+           Hospital.updateOne(query,{$set:{password:hash,token:''}},function(err,result){
+             if(err) return res.send({status : 400, message : "db failed!"});
+             return res.send({status : 200, message : "Password Updated successfully!"});
+
+           })
+         }
+     });
+})
+}
+})
+break;
+case "lab" :
+Lab.findOne({email:success.email},function(err, lab) {
+          if (err)  return res.json({ "message": "Error to find Doctor", status: 400});
+          if (!lab) return res.json({"message": "Please enter registered email!",status: 400});
+else{var query= {email:lab.email}
+bcrypt.genSalt(saltRounds, function(err, salt) {
+       bcrypt.hash(password,salt,null, function(err, hash) {
+         if(err) return res.send({status : 400, message : "error to get password hash"});
+         else {
+           Lab.updateOne(query,{$set:{password:hash,token:''}},function(err,result){
+             if(err) return res.send({status : 400, message : "db failed!"});
+             return res.send({status : 200, message : "Password Updated successfully!"});
+
+           })
+         }
+     });
+})
+}
+})
+break;
+case "pharmacy" :
+Pharmacy.findOne({email:success.email},function(err, pharmacy) {
+          if (err)  return res.json({ "message": "Error to find Doctor", status: 400});
+          if (!pharmacy) return res.json({"message": "Please enter registered email!",status: 400});
+else{var query= {email:success.email}
+bcrypt.genSalt(saltRounds, function(err, salt) {
+       bcrypt.hash(password,salt,null, function(err, hash) {
+         if(err) return res.send({status : 400, message : "error to get password hash"});
+         else {
+           Pharmacy.updateOne(query,{$set:{password:hash,token:''}},function(err,result){
+             if(err) return res.send({status : 400, message : "db failed!"});
+             return res.send({status : 200, message : "Password Updated successfully!"});
+
+           })
+         }
+     });
+})
+}
+})
+break;
+
+
+}
+  }
+  else {
+    return res.json({ "message": "Link is not valid or expired.", status: 400});
+  }
+})
+.catch((err) => {
+  throw new Error('Higher-level error. ' + err.message);
+})
+}
+
 
 
 /*________________________________________________________________________
@@ -1047,3 +1340,4 @@ exports.logout = logout;
 exports.viewProfile = viewProfile;
 exports.login=login;
 exports.Notify = Notify;
+exports.updateForgotPassword = updateForgotPassword;
