@@ -544,12 +544,55 @@ var viewPullEHRrequestByPatient = (req, res)=>{
 
 var viewAllDoctors = (req, res)=>{
   let patientId = req.body.patientId;
+  let hospitalId=req.body.hospitalId;
+  let kind=req.body.kind;
+  let speciality=req.body.speciality;
+    let query=req.body.query;
+  var obj;
+  if(kind=='EHR') {
+    if(patientId) {
 
-  var condition = { isBlock : false, isDelete : false, isApproved : true};
-  Doctor.find(condition,{},function(err, data){
+      var obj={}
+      if (speciality) obj["practiceSpecialties"]={$in:[speciality]};
+      if (query) obj["firstName"]={$regex:query};
+    }
+    else return res.send({status:400,message:'PatientId is missing'});
+  }
+  else if(kind=='HOSP'){
+    if(hospitalId) {
+      obj={hospitalId:hospitalId}
+      if (speciality) obj["practiceSpecialties"]={$in:[speciality]};
+      if (query) obj["firstName"]={$regex:query};
+    }
+    else return res.send({status:400,message:'HospitalId is missing'});
+  }
+  else {
+          obj={};
+          if (speciality) obj["practiceSpecialties"]={$in:[speciality]};
+          if (query) obj["firstName"]={$regex:query};
+  }
+  if(kind=='EHR')
+  {
+    console.log('EHR.................OBJ',obj);
+    Ehr.find({patientId:patientId})
+    .select("doctorId")
+    .populate({path:'doctorId',match:obj})
+    .exec(function(err,data){
+      console.log('Error:',err,'Data:',data);
+      if(err) return res.send({status : 400, message : "failed to load all doctors!."});
+      return res.send({status : 200, message : "All doctors are here!.",data: data});
+    })
+
+}
+else {
+  //var condition = { isBlock : false, isDelete : false, isApproved : true}
+  Doctor.find(obj,function(err, data){
       if(err) return res.send({status : 400, message : "failed to load all doctors!."});
       return res.send({status : 200, message : "All doctors are here!.",data: data});
   });
+
+
+}
 }
 //Update Patient Data
 var updatePatient=function(req,res){
@@ -620,7 +663,7 @@ var searchDoctorBySpeciality = (req,res)=>{
 
 
 
-var getPatientVisit = (req,res)=>{
+    var getPatientVisit = (req,res)=>{
   var aadharNo = req.body.aadharNo;
     Patient.findOne({aadharNo : aadharNo},{},function(err,result){
       if(err) return res.send({status : 400, message : "Unable to fetch from db!."});
@@ -685,6 +728,8 @@ var getPatientVisit = (req,res)=>{
                      }
              if(stream){
                     viewVisitProfile(publishData,(result)=>{
+                      console.log("publishResult|||||||||||",result);
+
                       if (result){
                       var data='';
                       async.forEachLimit(result,1,(element,next)=>{
@@ -795,11 +840,9 @@ var updatePatientProfile = function(req,res){
 
   var uploadGeneralInfo = (req, res) => {
     var patientId = req.body.patientId;
-    //var data=req.body.data;
     var condition={_id:patientId}
     Patient.findOne(condition,function(err,result){
                  patientadharno=result.aadharNo;
-
                   var generalInfo={
                     sugar:req.body.sugar,
                     weight:req.body.weight,
@@ -820,7 +863,6 @@ var updatePatientProfile = function(req,res){
                     key:patientadharno,
                     data:datax
                       }
-                      console.log("address",obj);
                   Global.publishDataOnMultichain(obj, (result, error) => {
                       if (result) {
                           return res.send({
@@ -875,6 +917,91 @@ var updatePatientProfile = function(req,res){
 
 
 
+
+var fetchPatientVitialInfo = function(req,res){
+  var patientId=req.body.patientId;
+  var condition={_id:patientId};
+  var bloodPressure=[];
+  var labelBP=[];
+  var weight=[];
+  var labelWt=[];
+  var sugar=[];
+  var labelSugar=[];
+  var latestBloodPressure;
+  var latestSugar;
+  var latestWeight;
+  Patient.findOne(condition,function(err,data){
+    if(err) return res.send({status : 400, message : "db failed!"});
+            var data = {
+              address : data.multichainAddress,
+              //key:data.aadharNo,
+              stream : "Patient"
+          }
+          //listPublisherStreamKeys
+            Global.listPublisherStreamKeys(data,(result)=>{
+              //console.log("results--------",result)
+              if(result){
+                let c = 1;
+                var responseData = [];
+                result=result.reverse();
+                latestBloodPressure=result[0].systolic;latestSugar=result[0].sugar;latestWeight=result[0].weight;
+                async.forEachLimit(result, 1, (element, next) => {
+                  //console.log("element",element);
+                    c++;
+                    if(c < result.length&&c<30){
+                      //console.log('Data:::',element);
+                      if(element.sugar||element.weight||element.systolic)
+                       {
+                         var ts=new Date(element.date);
+                         var date=ts.getDate();
+                         if(ts=='Invalid Date'){}
+                         else{labelBP.push(ts);labelWt.push(ts);labelSugar.push(ts);
+                         if(element.systolic==null)bloodPressure.push(0);else bloodPressure.push(element.systolic);
+                         if(element.sugar==null)sugar.push(0);else sugar.push(element.sugar);
+                         if(element.weight==null)weight.push(0);else weight.push(element.weight);}
+                       }
+                      next();
+                    }else{
+                      //console.log('datat:::',element);
+                      var ts=new Date(element.date);
+                      var date=ts.getDate();
+                      if(ts=='Invalid Date'){}//labelBP.push(0);labelWt.push(0);labelSugar.push(0);
+                      else{labelBP.push(ts);labelWt.push(ts);labelSugar.push(ts);
+                      if(element.sugar||element.weight||element.systolic)
+                      {
+                        if(element.systolic==null)bloodPressure.push(0);else bloodPressure.push(element.systolic);
+                        if(element.sugar==null)sugar.push(0);else sugar.push(element.sugar);
+                        if(element.weight==null)weight.push(0);else weight.push(element.weight);
+                      }}
+                      var bp={
+                        latestBloodPressure:latestBloodPressure,
+                        bloodPressure:bloodPressure,
+                        labelBP:labelBP
+                      }
+                      var wt={
+                        latestWeight:latestWeight,
+                        weight:weight,
+                        labelWt:labelWt
+                      }
+                      var su={
+                        latestSugar:latestSugar,
+                        sugar:sugar,
+                        labelSugar:labelSugar
+                      }
+                      var obj={
+                        bp:bp,
+                        wt:wt,
+                        su:su
+                      }
+                      return res.json({message:"your data",status:200,data:obj})
+                    }
+                  });
+            }
+          })
+            })
+}
+
+
 exports.updatePatient=updatePatient;
 exports.addPatient = addPatient;
 exports.getPatientById = getPatientById;
@@ -896,3 +1023,4 @@ exports.getPatientVisit = getPatientVisit;
 exports.updatePatientProfile = updatePatientProfile;
 exports.uploadGeneralInfo = uploadGeneralInfo;
 exports.fetchGeneralInfo = fetchGeneralInfo;
+exports.fetchPatientVitialInfo = fetchPatientVitialInfo;

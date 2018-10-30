@@ -3,15 +3,16 @@ var Schema=mongoose.Schema;
 var pharmacySchema=new Schema({
   name:String,
   contactNo:String,
-  email:String,
+  email:{type:String, unique:true},
   city:String,
   password:String,
-  license:String,
+  license:{type:String, unique:true},
   image:String,
   avaliablity : {
     open:{type:String},
     close:{type:String}
   },
+  OTP:{type:String},
   address:{type:String},
   description : {type :String},
   multichainAddress : {type : String},

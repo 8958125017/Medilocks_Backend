@@ -442,7 +442,6 @@ function publishDataOnMultichain(publishData) {
         });
     } else {
         var x = JSON.stringify(publishData.data);
-        console.log('XXXXXX',x);
         var datax = new Buffer(x).toString('hex');
         console.log('after :::',datax);
         multichain.publishFrom({

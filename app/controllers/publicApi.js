@@ -24,10 +24,14 @@ var Patient = require("../models/patient");
 var Hospital = require("../models/hospital");
 var Pharmacy = require("../models/pharmacy.js");
 var Lab = require("../models/lab.js");
+var Contact = require("../models/contact.js")
 var mailer = require("nodemailer");
 var saltRounds=12;
 // var Hospital = require("../models/token");
 var Token = require("../models/token");
+var Subscribe = require("../models/subscribe");
+var Visit = require('../models/visitcount.js');
+
 
 /*________________________________________________________________________
  * @Date:      	10 Nov,2017
@@ -305,7 +309,7 @@ function loginfunction(req,res,requestType,email,password,callback){
              Pharmacy.findOne({email: email},function(err, pharmacy) {
                 if (err) return res.json({ "message": "Error to find Doctor",status: 400});
                 if (!pharmacy) return res.json({"message": "Please enter registered email!",status: 400});
-                if(patient.isDelete == true || patient.isBlock == true){
+                if(pharmacy.isDelete == true || pharmacy.isBlock == true){
                 return res.json({ "message": "your account has been blocked", status: 400});
                 }
                 else if (pharmacy.isApproved == true) {
@@ -823,7 +827,6 @@ var getProfile =  function(req,res) {
     }
 };
 var userupdate = function(req,res){
-  console.log("update||||||||||");
 var updatevalue = req.body.updatename;
 var uid = req.body.userid;
 var no = req.body.updatemobile;
@@ -1325,6 +1328,173 @@ break;
 }
 }
 
+
+var subscribe = function(req,res){
+var emailid = req.body.email;
+Subscribe.findOne({email:emailid},function(error,result){
+  console.log(result,error);
+  if(result){
+  return  res.json({
+      message:"user is already subscribed",
+      status:400
+    })
+  }
+  if(error){
+  return  res.json({
+      message:"error to subscribed",
+      status:400
+    })
+  }
+    var obj ={
+      email : emailid
+    }
+Subscribe.create(obj,function(err,subscribre){
+if(err){
+ return  res.json({
+    message:"error to subscribe user.please try again",
+    status:400
+  })
+}
+    if(subscribe){
+      var smtpTransport = mailer.createTransport("SMTP",{
+        service: "Gmail",
+        auth: {
+            user: "vivekshengupta011@gmail.com",
+            pass: "m*nukumar"
+        }
+    });
+
+    var mail = {
+        from: "Medilocks <vivekshengupta011@gmail.com>",
+        to: emailid,
+        subject: 'Regarding Medilocks admins Status',
+        text: 'You are subscribed in medilocks',
+
+    }
+
+    smtpTransport.sendMail(mail, function(error, response){
+        if(error){
+          return  res.json({
+             message:"please try again",
+             status:400
+           })
+        }else{
+          return  res.json({
+             message:"user is subscribed succesfully",
+             status:200
+           })
+        }
+        smtpTransport.close();
+    });
+    }
+})
+
+})
+ }
+
+
+
+ var contactUs = function(req,res){
+ var emailid = req.body.email;
+ var name = req.body.name;
+ var subject = req.body.subject;
+ var message = req.body.message;
+var obj = {
+email:emailid,
+name:name,
+subject:subject,
+message:message
+}
+Contact.create(req.body,function(error,result){
+  console.log(error,result);
+if(error){
+  return  res.json({
+     message:"please try again",
+     status:400
+   })
+}
+return  res.json({
+   message:"your query send successfully to admin",
+   status:200
+ })
+
+})
+
+  }
+
+
+
+
+
+
+var dashBoardData=function(req,res){
+  var doctorId=req.body.doctorId;
+  var ansy=new Array(12).fill(0)
+  var ansm=new Array(31).fill(0);
+  var answ=new Array(7).fill(0);
+  var totalWeekVisitor=0;
+  var totalMonthVisitor=0;
+  var todayVisitor=0;
+  //var answ=[];
+
+  var labely=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  var labelw=['Sun','Mon','Tue','Wed','Thr','Fri','Sat']
+  var x=['Sun','Mon','Tue','Wed','Thr','Fri','Sat']
+  var yearlydata;
+  Visit.find({doctorId:doctorId,date:{$lte:Date.now(),$gt:Date.now()-365*24*3600*1000}}).sort({'date':1}).exec(function(err,result){
+if(err) return res.send({status:400,message:'error to fetch!'});
+async.forEachLimit(result, 1, (element, next) => {
+   var i=Number(new Date(element.date).getMonth());
+   ansy[i]=ansy[i]+Number(element.vc);
+
+   next();
+})
+yearlydata={
+     labely:labely,
+     ansy:ansy
+     }
+     Visit.find({doctorId:doctorId,date:{$lte:Date.now(),$gt:Date.now()-30*24*3600*1000}}).sort({'date':1}).exec(function(err,result){
+     if(err) return res.send({status:400,message:'error to fetch!'});
+     console.log('Result::',result);
+     async.forEachLimit(result, 1, (element, next) => {
+       var i=Number(new Date(element.date).getDate());
+       ansm[i]=ansm[i]+Number(element.vc);
+       totalMonthVisitor+=Number(element.vc);
+       next();
+     })
+   var monthlydata={
+     ansm:ansm
+    }
+    Visit.find({doctorId:doctorId,date:{$lte:Date.now(),$gt:Date.now()-7*24*3600*1000}}).sort({'date':1}).exec(function(err,result){
+   if(err) return res.send({status:400,message:'error to fetch!'});
+   async.forEachLimit(result, 1, (element, next) => {
+     if(element.date<=Date.now()&&element.date>=Date.now()-new Date().getHours()*3600*1000) {todayVisitor=element.vc;console.log('Today Visit:',todayVisitor);}
+     var i=Number(new Date(element.date).getDay());
+     answ[i]=answ[i]+Number(element.vc);
+     totalWeekVisitor+=Number(element.vc);
+     //answ.push(element.vc);
+     //labelw.push(x[new Date(element.date).getDay()])
+     next();
+   })
+   var weeklydata={
+     labelw:labelw,
+     answ:answ
+   }
+   var obj={
+     yearlydata:yearlydata,
+     monthlydata:monthlydata,
+     weeklydata:weeklydata,
+     todayVisitor:todayVisitor,
+     totalMonthVisitor:totalMonthVisitor,
+     totalWeekVisitor:totalWeekVisitor
+   }
+   return res.send({status:200,message:'Data fetch succesfully!',data:obj})
+})
+})
+})
+}
+
+
 //  functions
 exports.register = register;
 exports.verifyEmail = verifyEmail;
@@ -1341,3 +1511,6 @@ exports.viewProfile = viewProfile;
 exports.login=login;
 exports.Notify = Notify;
 exports.updateForgotPassword = updateForgotPassword;
+exports.subscribe = subscribe;
+exports.contactUs = contactUs;
+exports.dashBoardData = dashBoardData;

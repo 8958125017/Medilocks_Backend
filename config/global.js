@@ -83,12 +83,12 @@ var liststreamskey = (data,callback)=>{
 }
 
 var listStreamPublisherItems = (data,callback)=>{
-  console.log('listStreamPublisherItems',data);
       multichain.listStreamPublisherItems({
       stream: data.stream,
       address:data.address,
       count: 25
-      },(err, result) => {
+          },(err, result) => {
+            console.log("result----------------",result);
         if (err) callback(null)
         else {
           if(result){
@@ -268,12 +268,14 @@ var listStreamKey= (data,callback)=>{
       count: 99999
         },
         (err, result) => {
+          console.log("element---------------------",result);
+
         if (err) callback(null)
         else {
             let counter = 0;
             var responseData = [];
             async.forEachLimit(result, 1, (element, next) => {
-              console.log("element",element);
+              // console.log("element",element);
                 counter++;
                 if(counter < result.length){
                   var resultLength = result[counter-1].data;

@@ -36,6 +36,36 @@ router.post('/getDiagonosis',doctor.getDiagonosis);
 router.post('/getDeseas',doctor.getDeseas);
 router.post('/getDoctorDegree',doctor.getDoctorDegree);
 router.post('/getDoctorDepartment',doctor.getDoctorDepartment);
+router.post('/doctorDashboard',doctor.doctorDashboard);
+router.post('/recentVisitData',doctor.recentVisitData);
+router.post('/weeklydata',doctor.weeklydata);
+router.post('/dashBoardData',doctor.dashBoardData);
+router.post('/getPatientVisit',doctor.getPatientVisit);
+router.post('/uploadPrescription',doctor.uploadPrescription);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

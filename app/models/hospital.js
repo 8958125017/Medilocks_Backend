@@ -1,4 +1,4 @@
-var mongoose = require('mongoose');
+  var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
 var hospitalSchema = new Schema({
@@ -41,6 +41,12 @@ doctor:[
 ],
 lab:[
   { labId : {type:mongoose.Schema.Types.ObjectId, ref: 'lab'},
+    contactNo : { type : String},
+    status : {type : Boolean,default : false}
+  }
+],
+pharmacy:[
+  { pharmacyId : {type:mongoose.Schema.Types.ObjectId, ref: 'pharmacy'},
     contactNo : { type : String},
     status : {type : Boolean,default : false}
   }

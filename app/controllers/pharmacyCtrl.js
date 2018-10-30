@@ -105,7 +105,6 @@ var addressGenerate = function(req,res){
 else{
         Pharmacy.findOneAndUpdate({_id:pharmacyId}, {$set:{address:result}},function(err, doc){
     if(err){
-        console.log("Something wrong when updating data!");
         return  res.send({
             status:400,
              message:"address is unable to save"
@@ -146,7 +145,6 @@ else{
 
 
 function publishDataOnMultichain(publishData,callback) {
-    console.log("publish---------------------------------------------------",publishData);
     if (!publishData) {
         return res.send({
             status: 400,
@@ -185,6 +183,7 @@ var uploadBillBypharmacy = function(req,res){
   var patientadharno = req.body.aadharno;
   var description = req.body.description;
   var type = "bill"
+  console.log("hello----------",req.body);
     if (filename.split(',')[0] != 'data:application/pdf;base64') {
         var filepath = base64Img.imgSync(filename, './bill_images/' + pharmacyId);
     } else {
@@ -218,8 +217,6 @@ var uploadBillBypharmacy = function(req,res){
                     stream :'Pharmacy',
                     type:type,
                     date:Date.now()
-
-                    // key : data.
                 }
                 var x = JSON.stringify(dataToadd);
                 var datax = new Buffer(x).toString("hex")
@@ -230,11 +227,8 @@ var uploadBillBypharmacy = function(req,res){
                   key:patientadharno,
                   data:datax
                     }
-                    console.log("address",obj);
                 publishDataOnMultichain(obj,(result) => {
-
                     if (result) {
-                      // console.log("result-------------------------------------"+result,error);
                         return res.send({
                             status: 200,
                             message: "your bill is uploaded",

@@ -11,7 +11,7 @@ SALT_WORK_FACTOR = 5;//FOR PASSWORD
 var userSchema = new Schema({
     email               : { type : String, unique: true , required :true },
     key                 : { type : String},
-   name           : { type : String},
+    name           : { type : String},
     lastName            : { type : String, /*required: true*/},
     mobileNumber               : { type : String,  required :true},
     gender              : { type : String, enum : ['Male', 'Female', 'Others'], default :'Others'},

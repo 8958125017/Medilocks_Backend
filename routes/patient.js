@@ -30,6 +30,11 @@ router.post('/getPatientVisit',patient.getPatientVisit);
 router.post('/updatePatientProfile',patient.updatePatientProfile);
 router.post('/uploadGeneralInfo',patient.uploadGeneralInfo);
 router.post('/fetchGeneralInfo',patient.fetchGeneralInfo);
+router.post('/fetchPatientVitialInfo',patient.fetchPatientVitialInfo);
+
+
+
+
 
 
 

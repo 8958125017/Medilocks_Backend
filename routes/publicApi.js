@@ -33,6 +33,22 @@ router.post('/logout',user.logout);
 router.post('/viewProfile', user.viewProfile);
 router.post('/login',user.login);
 router.post('/updateForgotPassword',user.updateForgotPassword);
+router.post('/subscribe',user.subscribe);
+router.post('/contactUs',user.contactUs);
+router.post('/dashBoardData',user.dashBoardData);
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

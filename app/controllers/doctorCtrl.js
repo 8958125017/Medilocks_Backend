@@ -16,7 +16,8 @@ var Hospital = require('../models/hospital.js');
 var Address = require('../models/address.js');
 var CONST = require('../../config/constants');
 var Global = require('../../config/global.js');
-
+var moment = require('moment');
+var Ehr = require('../models/ehr.js');
 const ipfs = ipfsAPI('ipfs.infura.io', '5001', {
     protocol: 'https'
 });
@@ -26,6 +27,7 @@ const authToken = '5430c1c3514f0a7d222f04709d977ce4'; //08ac6601b9797b4d4d6f4688
 const client = require('twilio')(accountSid, authToken);
 var request = require('request');
 var axios = require('axios');
+var Visit = require('../models/visitcount.js');
 
 
 
@@ -135,11 +137,7 @@ var doctorSendRequestToAdmin = function(req, res) {
                                 error: err
                             });
                             else {
-                                // return res.send({
-                                //     status: 200,
-                                //     message: "request is send successfully!",
-                                //     data: result
-                                // });
+
                                 var mobileNo = "+91"+result.mobileNo;
                                  client.messages.create({
                                         body: 'Your otp to verify:'+signupOTP ,
@@ -238,7 +236,6 @@ var doctorSendRequestToAdmin = function(req, res) {
 }
 
 var addPatient = function(req, res) {
-    console.log("add patient");
     var firstName = req.body.firstName;
     var lastName = req.body.lastName;
     var name = firstName + ' ' + lastName;
@@ -257,7 +254,6 @@ var addPatient = function(req, res) {
     var  filePath = req.body.image;
     var doctorId = req.body.doctorId;
     var multichainAddress  = '';
-console.log("Ssss",filePath);
     if (!aadharNo ||!name || !mobileNo || !email || !address || !gender || !age || !password || !confirmPassword) {
         return res.send({
             status: 400,
@@ -433,6 +429,7 @@ var verifyDoctorSignupOTP = (req, res) => {
     }
     else if (req.body.OTP) {
         Doctor.findOneAndUpdate({ signupOTP: req.body.OTP }, { $set: { isApproved: true,signupOTP : "" } },{new :true}, (err, updateUser) => {
+          console.log("updateduser",updateUser);
             if(err){
                 res.send({
                     message: "Error occured",
@@ -442,9 +439,10 @@ var verifyDoctorSignupOTP = (req, res) => {
             }
             if (updateUser) {
                 if(hospitalId){
-                    let hospital  = Hospital.findOne({_id : hospitalId},function(err,found){
-                        if(err) console.log('errpr',err);
+                    let hospital  = Doctor.findOne({_id : updateUser._id},function(err,found){
+                        if(err) console.log('error',err);
                         if(found){
+                          console.log("found",found.multichainAddress);
                             var x = JSON.stringify(updateUser);
                             var datax = new Buffer(x).toString('hex');
                             let publishData = {address : found.multichainAddress,streamName : "Doctor",key : updateUser.aadharNo,data : datax};
@@ -505,7 +503,11 @@ var verifyPatientSignupOTP = (req, res) => {
                     let doctor  = Doctor.findOne({_id : doctorId},function(err,found){
                         if(err) console.log('errpr',err);
                         if(found){
-                          var x = JSON.stringify(updateUser);
+                          var obj = {
+                            visitTime:Date(),
+                            data:updateUser
+                          }
+                          var x = JSON.stringify(obj);
                           var datax = new Buffer(x).toString('hex');
                             let publishData = {address : found.multichainAddress,streamName : "Patient",key : updateUser.aadharNo,data : datax};
                             Global.publishDataOnMultichain(publishData,(result)=>{
@@ -595,7 +597,6 @@ var verifyPatientByDoctor = function(req, res) {
 }
 
 var getAllPatient = function(req, res) {
-  console.log("data");
    var multichainAddress = req.body.multichainAddress;
    var stream = req.body.stream;
    var data ={
@@ -603,12 +604,142 @@ var getAllPatient = function(req, res) {
     stream : stream
    }
    Global.listStreamPublisherItems(data,(result)=>{
+     console.log("result",result);
       if(result){
         return res.send({status : 200, message : "Patients List",data : result});
 }else{
       return res.send({status : 200, message : "no data ",data : result});
 }
    });
+}
+
+
+
+var doctorDashboard = function(req, res) {
+   var multichainAddress = req.body.multichainAddress;
+   var stream = req.body.stream;
+   var data ={
+    address : multichainAddress,
+    stream : stream
+   }
+   Global.listStreamPublisherItems(data,(result)=>{
+     if(result){
+       let c = 0;
+       var responseData = [];
+       async.forEachLimit(result, 1, (element, next) => {
+           c++;
+           if(c < result.length){
+           if(element)
+              {
+                var currdate =  element.visitTime;
+                console.log("element",currdate);
+                var myDate = new Date(currdate);
+                var date =  moment(Date.now()).format('YYYY-MM-DD HH:mm:ss');
+                console.log("date",date);
+                var lastweek = moment(Date.now()- 7 * 24 * 3600 * 1000).format('YYYY-MM-DD HH:mm:ss');
+                console.log("date",lastweek);
+
+                if (moment(currdate).isBetween(lastweek, date)) {
+                  var obj = {
+                    oneweekdata:element
+                  }
+                  console.log("obj",obj);
+                  responseData.push(obj);
+                  console.log("isb/w");
+                } else {
+                  console.log('is not between')
+                }
+             //
+             //    var lastmonth = moment(Date.now()- 31 * 24 * 3600 * 1000).format('YYYY-MM-DD HH:mm:ss');
+             //    if (moment(Currdate).isBetween(lastmonth, date)) {
+             //      var obj = {
+             //        lastmonthdata:element
+             //      }
+             //      console.log("---------msmmsms",obj.lastmonthdata.length  );
+             //
+             //      responseData.push(obj);
+             //      console.log("isb/w");
+             //    } else {
+             //      console.log('is not between')
+             //    }
+             //    var lastyear = moment(Date.now()- 7 * 24 * 3600 * 1000).format('YYYY-MM-DD HH:mm:ss');
+             //    console.log("year---------",lastyear);
+             //    if (moment(Currdate).isBetween(lastyear, date)) {
+             //      var obj = {
+             //        lastyeardata:element
+             //      }
+             //      console.log("obj",obj);
+             //
+             //      responseData.push(obj);
+             //      console.log("isb/w");
+             //    } else {
+             //      console.log('is not between')
+             //    }
+             //
+             //    console.log("data",responseData);
+             // }
+             next();
+           }else{
+             if(element)
+             {
+               console.log("result----------------",element.visitTime);
+               var currdate =  new Date(element.visitTime);
+              // var Currdate =  currdate.toISOString().substring(0, 10)
+               var date = moment(Date.now()).format('YYYY-MM-DD HH:mm:s');
+               var lastweek = moment(Date.now() - 7 * 24 * 3600 * 1000).format('YYYY-MM-DD HH:mm:ss');
+               if (moment(currdate).isBetween(lastweek, date)) {
+                 console.log("data",element);
+                 var obj = {
+                   oneweekdata:element
+                 }
+                 console.log("obj",obj.length);
+
+                 console.log("object-----------",obj);
+                 responseData.push(obj);
+                 console.log("isb/w");
+               } else {
+                 console.log('is not between')
+               }
+             //   var lastmonth = moment(Date.now()- 31 * 24 * 3600 * 1000).format('YYYY-MM-DD HH:mm:ss');
+             //   console.log("last month date",lastmonth);
+             //   if (moment(Currdate).isBetween(lastmonth, date)) {
+             //     var obj = {
+             //       lastmonthdata:element
+             //     }
+             //     console.log("---------msmmsms",obj.lastmonthdata);
+             //
+             //     responseData.push(obj);
+             //     console.log("isb/w");
+             //   } else {
+             //     console.log('is not between')
+             //   }
+             //   var lastyear = moment(Date.now()- 365 * 24 * 3600 * 1000).format('YYYY-MM-DD HH:mm:ss');
+             //   console.log("year---------",lastyear);
+             //   if (moment(Currdate).isBetween(lastyear, date)) {
+             //     var obj = {
+             //       lastyeardata:element
+             //     }
+             //     console.log("obj",obj.las);
+             //
+             //     responseData.push(obj);
+             //     console.log("isb/w");
+             //   } else {
+             //     console.log('is not between')
+             //   }
+             //  var obj = {
+             //    TotalPatient : result.length
+             //   }
+             //   console.log("obj",obj);
+             //
+             //   responseData.push(obj);
+             // }
+             return res.json({message:"your data",status:200,data:responseData})
+           }
+         }
+   }
+})
+}
+})
 }
 
 
@@ -631,7 +762,7 @@ var getAllpendingdoctor = function(req, res) {
 
 
 
-var createPrescription = (req, res) => {
+var uploadPrescription = (req, res) => {
     var patient = req.body.patient;
     var doctor = req.body.doctor;
     var doctorId = req.body.doctorId;
@@ -650,6 +781,7 @@ var createPrescription = (req, res) => {
         data : data,
         date: new Date()
     };
+    console.log("htmldata",HTMLdata);
     var html = CONST.createPrescription(HTMLdata);
     var options = {
         format: 'Letter'
@@ -713,6 +845,98 @@ var createPrescription = (req, res) => {
         })
     })
 }
+
+
+
+var createPrescription = (req, res) => {
+    var patient = req.body.patient;
+    var doctor = req.body.doctor;
+    var doctorId = req.body.doctorId;
+    var patientadharno = req.body.aadharNo;
+    var diseas = req.body.diseas;
+    var diagonosis = req.body.diagonosis;
+    var prescription = req.body.prescription;
+    var data = req.body.data;
+    var type = "Prescription";
+    console.log("data------------------------",patient.data._id)  ;
+    var HTMLdata = {
+        patient : patient,
+        doctor : doctor,
+        prescription: prescription,
+        diagonosis : diagonosis,
+        data : data,
+        date: new Date()
+    };
+    //var html = CONST.createPrescription(HTMLdata);
+    // var options = {
+    //     format: 'Letter'
+    // };
+        Doctor.findById({
+            _id: doctorId
+        }, function(err, Data) {
+            if (err) {
+                return res.send({
+                    status: 400,
+                    message: "address is unable to save"
+                });
+            } else {
+                    var dataToadd = {
+                      patient : patient.data._id  ,
+                      doctor : Data,
+                      prescription: prescription,
+                      diagonosis : diagonosis,
+                      data : data,
+                      date: new Date(),
+                        uploadedby: Data.multichainAddress,
+                        stream : 'Doctor',
+                        //key : data.aadharNo,
+                        type:type,
+                        date:Date.now()
+                    }
+                    console.log("data----------------",)
+                    var todaytimestamp=new Date(moment(Date.now()).format('YYYY-MM-DD')).getTime();
+                    console.log('TimeStamp:',todaytimestamp);
+                    var visitobj={
+                      doctorId:doctorId,
+                      hospitalId:data.hospitalId?data.hospitalId:null,
+                      date:todaytimestamp,
+                      vc:1
+                    }
+                    Visit.findOneAndUpdate({doctorId:doctorId,date:todaytimestamp},{$inc:{vc:1}},function(err,result0){
+                      if(err) { return res.send({status:400,message: "your prescription is uploaded"})}
+                        if(result0==null){
+                          Visit.create(visitobj,function(err,result1){
+                            if(err) if(err) { return res.send({status:400,message: "your prescription is uploaded"})}
+                            console.log(result1);
+                        })
+                      }
+                      console.log('Result',result0);
+                    })
+
+                    var x = JSON.stringify(dataToadd);
+                    var datax = new Buffer(x).toString("hex")
+                    var streamName = "visit";
+                    var obj  = {
+                      address:Data.multichainAddress,
+                      streamName:streamName,
+                      key:patientadharno,
+                      data:datax
+                        }
+                        console.log("obj",obj);
+                    Global.publishDataOnMultichain(obj, (result, err) => {
+                      console.log("results",result,err)
+                        if (result) {
+                            return res.send({
+                                status: 200,
+                                message: "your prescription is uploaded",
+                                data: result
+                            })
+                        }
+                    });
+            }
+        })
+}
+
 
 
 var uploadBillByDoctor = (req, res) => {
@@ -882,17 +1106,9 @@ var sendPullEHRrequestByDoctor = (req, res) => {
     var doctorId = req.body.doctorId;
     let aadharNo = req.body.aadharNo;
     var createNewOTP = Math.floor(100000 + Math.random() * 900000);
-    var data = {
-        doctorId: doctorId,
-        status: false,
-        aadharNo: aadharNo,
-        OTP: createNewOTP
-    }
-    console.log("aaass",aadharNo);
     Patient.findOne({
         aadharNo: aadharNo
     }, {}, (err, found) => {
-      console.log("data------------",err,found);
         if (err) return res.send({
             status: 400,
             message: "error in send request"
@@ -902,142 +1118,243 @@ var sendPullEHRrequestByDoctor = (req, res) => {
             message: 'Aadhar Number does not exist!.'
         });
         if (found) {
-          console.log("found------------",found);
-          if(found.pullEHRrequests.length > 0){
-            var status = found.pullEHRrequests.findIndex((item)=>{
-              return item.doctorId.equals(doctorId);
-            });
-            console.log("status",status);
-              if(status!==-1){
-                var condition = {aadharNo: aadharNo,"pullEHRrequests.doctorId" : doctorId};
-                  Patient.findOneAndUpdate(condition,{$set : {'pullEHRrequests.$.OTP' : createNewOTP,"pullEHRrequests.$.status":false}},function(err, data){
-                  if (err) return res.send({status: 400,message: "failed to update OTP!."});
-                  client.messages.create({
-                     body: 'Your otp to verify:'+createNewOTP ,
-                     from: '+14053584187',
-                     to: "+91"+data.mobileNo
-                 }, function(error, data1) {
-                     if (error) return res.send({
-                         status: 400,
-                         message: "failed to send otp!",
-                         error: error
-                     });
-                     else {
-                       updateDoctor(doctorId,found._id,aadharNo,req,res);
-                     }
-                 });
-                });
-              }
-
-              else{
-                console.log("data||||||||||||||||");
-                Patient.findOneAndUpdate({aadharNo: aadharNo}, {$push: {'pullEHRrequests': data}}, function(err, data) {
-                  console.log("data||||||||||||||||",err,data);
-
-                    if (err) return res.send({status: 400,message: "failed to assign prescription!."});
-                    client.messages.create({
-                       body: 'Your otp to verify:'+createNewOTP ,
-                       from: '+14053584187',
-                       to: "+91"+data.mobileNo
-                   }, function(error, data1) {
-                       if (error) return res.send({
-                           status: 400,
-                           message: "failed to send otp!",
-                           error: error
-                       });
-                       else
-                       {
-                         updateDoctor(doctorId,found._id,aadharNo,req,res);
-                       }
-                   });
-                   });
-              }
-                  }
-
-        else{
-              console.log("entering into first time");
-            Patient.findOneAndUpdate({aadharNo: aadharNo}, {$push: {'pullEHRrequests': data}}, function(err, data) {
-              console.log("entering into first time",err,data);
-              if (err) return res.send({status: 400,message: "failed to assign prescription!."});
-                client.messages.create({
-                   body: 'Your otp to verify:'+createNewOTP ,
-                   from: '+14053584187',
-                   to: "+91"+data.mobileNo
-               }, function(error, data1) {
-                 console.log("dara",error,data1);
-                if (error) return res.send({
-                       status: 400,
-                       message: "failed to send otp!",
-                       error: error
-                   });
-                   else {
-                  updateDoctor(doctorId,found._id,aadharNo,req,res);
-                   }
-               });            });
+          console.log("found",found._id);
+          var obj = {
+              doctorId: doctorId,
+              status: false,
+              aadharNo: aadharNo,
+              OTP: createNewOTP,
+              time: Date(),
+              patientId:found._id
           }
-    }
-})
-}
+          Ehr.findOneAndUpdate({patientId:found._id},{$set : {'OTP' : createNewOTP}}, function(err, data){
+            console.log("data",data,err);
+                        if (err) return res.send({status: 400,message: "failed to update OTP!."});
+                        if(data){  client.messages.create({
+                           body: 'Your otp to verify:'+createNewOTP ,
+                           from: '+14053584187',
+                           to: "+91"+found.mobileNo
+                       }, function(error, data1) {
+                           if (error) return res.send({
+                               status: 400,
+                               message: "failed to send otp!",
+                               error: error
+                           });
+                       if(data1)
+                       return res.send({
+                           status: 200,
+                           message: "otp is send,please verify"
+                       });
+                       });
+                     }
+                     if(data==null){
+                       console.log("obj------",obj);
+                       Ehr.create(obj,function(error,result){
+                         if(error)
+                           return res.json({
+                             msg:"failed to create OTP",
+                             status: 400
+                           })
+                      client.messages.create({
+                              body: 'Your otp to verify:'+createNewOTP ,
+                              from: '+14053584187',
+                              to: "+91"+found.mobileNo
+                          },function(error, data1) {
+                            console.log("dataaa--------------",error,data1);
+                              if (error) return res.send({
+                                  status: 400,
+                                  message: "failed to send otp!",
+                                  error: error
+                              });
+                          if(data1)
+                          return res.send({
+                              status: 200,
+                              message: "otp is send,please verify"
+                          });
+                          });
+                        })
+                         }
+                       })
+                     }
+                   })
+                 }
+
+
+    //       console.log("found------------",found);
+    //       if(found.pullEHRrequests.length > 0){
+    //         var status = found.pullEHRrequests.findIndex((item)=>{
+    //           return item.doctorId.equals(doctorId);
+    //         });
+    //           if(status!==-1){
+    //             var condition = {aadharNo: aadharNo,"pullEHRrequests.doctorId" : doctorId};
+    //               Patient.findOneAndUpdate(condition,{$set : {'pullEHRrequests.$.OTP' : createNewOTP,"pullEHRrequests.$.status":false}},function(err, data){
+    //               if (err) return res.send({status: 400,message: "failed to update OTP!."});
+    //               client.messages.create({
+    //                  body: 'Your otp to verify:'+createNewOTP ,
+    //                  from: '+14053584187',
+    //                  to: "+91"+data.mobileNo
+    //              }, function(error, data1) {
+    //                  if (error) return res.send({
+    //                      status: 400,
+    //                      message: "failed to send otp!",
+    //                      error: error
+    //                  });
+    //                  else {
+    //                    updateDoctor(doctorId,found._id,aadharNo,req,res);
+    //                  }
+    //              });
+    //             });
+    //           }
+    //
+    //           else{
+    //             console.log("data||||||||||||||||");
+    //             Patient.findOneAndUpdate({aadharNo: aadharNo}, {$push: {'pullEHRrequests': data}}, function(err, data) {
+    //               console.log("data||||||||||||||||",err,data);
+    //
+    //                 if (err) return res.send({status: 400,message: "failed to assign prescription!."});
+    //                 client.messages.create({
+    //                    body: 'Your otp to verify:'+createNewOTP ,
+    //                    from: '+14053584187',
+    //                    to: "+91"+data.mobileNo
+    //                }, function(error, data1) {
+    //                    if (error) return res.send({
+    //                        status: 400,
+    //                        message: "failed to send otp!",
+    //                        error: error
+    //                    });
+    //                    else
+    //                    {
+    //                      updateDoctor(doctorId,found._id,aadharNo,req,res);
+    //                    }
+    //                });
+    //                });
+    //           }
+    //               }
+    //
+    //     else{
+    //           console.log("entering into first time");
+    //         Patient.findOneAndUpdate({aadharNo: aadharNo}, {$push: {'pullEHRrequests': data}}, function(err, data) {
+    //           console.log("entering into first time",err,data);
+    //           if (err) return res.send({status: 400,message: "failed to assign prescription!."});
+    //             client.messages.create({
+    //                body: 'Your otp to verify:'+createNewOTP ,
+    //                from: '+14053584187',
+    //                to: "+91"+data.mobileNo
+    //            }, function(error, data1) {
+    //              console.log("dara",error,data1);
+    //             if (error) return res.send({
+    //                    status: 400,
+    //                    message: "failed to send otp!",
+    //                    error: error
+    //                });
+    //                else {
+    //               updateDoctor(doctorId,found._id,aadharNo,req,res);
+    //                }
+    //            });            });
+    //       }
+    // }
+
+
 
 var verifyEhrByDoctor = function(req, res) {
     var OTP      = req.body.OTP;
     var aadharNo = req.body.aadharNo;
     var multichainAddress = req.body.multichainAddress;
-    Patient.find({
+    console.log("data",req.body);
+    Ehr.findOne({
         aadharNo: aadharNo
     }, function(err, data) {
+      console.log("dataaaaaaaaaaaa",err,data);
         if (err) return res.send({
             status: 400,
             message: "error to get user"
         });
         else if (data) {
-            let currDoctor = data[0].pullEHRrequests;
-            let counter = 0;
-            async.forEachLimit(currDoctor, 1, (element, next) => {
-          console.log("element",element);
-                counter++;
-                    if (element.OTP == OTP) {
-                        Patient.findOneAndUpdate({
-                            "pullEHRrequests.OTP": OTP
-                        }, {
-                            $set: {
-                                "pullEHRrequests.$.status": true,
-                            }
-                        },{new : true}, function(err, updatedata) {
-                            console.log("updat--------------", updatedata,err);
-                            if (err) return res.send({
-                                status: 400,
-                                message: "error to get user",
-                                err: err
-                            });
-                     else{
-                        var x = JSON.stringify(updatedata);
-                        var datax = new Buffer(x).toString('hex');
-                        let publishData = {address : multichainAddress,streamName : "patient",key : aadharNo.toString(),data : datax};
-                        Global.publishDataOnMultichain(publishData,(result)=>{
-                            if(result){
-                                return res.send({
-                                status: 200,
-                                message: "Verify successfully!."
-                               });
-                            }
-                        });
+                    Ehr.findOneAndUpdate({
+                 "OTP": data.OTP
+               },{$set : {'status' : true}}, function(err, updatedata) {
+                                   console.log("updatedData",err,updatedata);
+                                     if (err) return res.send({
+                                         status: 400,
+                                         message: "error to get user",
+                                         err: err
+                                     });
+                              else{
+          Patient.findOne({_id:updatedata.patientId},function(err,response){
+                                 // var x = JSON.stringify(response);
+                                 var obj = {
+                                   visitTime : Date.now(),
+                                   data:response
+                                 }
+                                 var x = JSON.stringify(obj);
+                                 var datax = new Buffer(x).toString('hex');
+                                 let publishData = {address : multichainAddress,streamName : "patient",key : aadharNo.toString(),data : datax};
+                                 Global.publishDataOnMultichain(publishData,(result)=>{
+                                     if(result){
+                                         return res.send({
+                                         status: 200,
+                                         message: "Verify successfully!."
+                                        });
+                                     }
+                                 });
 
-                        }
-                    })
-                }
-                    else {
-                        if(counter != currDoctor.length)
-                        next();
-                        else
-                        return res.send({
-                            status: 400,
-                            message: "Not a valid OTP."
-                        });
+                               })
+                             }
+                         })
                        }
-                })
-            }
 
+
+
+
+
+
+//             let currDoctor = data[0];
+//             let counter = 0;
+//             async.forEachLimit(currDoctor, 1, (element, next) => {
+//                 counter++;
+//                     if (element.OTP == OTP) {
+//                         Patient.findOneAndUpdate({
+//                             "pullEHRrequests.OTP": OTP
+//                         }, {
+//                             $set: {
+//                                 "pullEHRrequests.$.status": true,
+//                             }
+//                         },{new : true}, function(err, updatedata) {
+//                             console.log("updat--------------", updatedata,err);
+//                             if (err) return res.send({
+//                                 status: 400,
+//                                 message: "error to get user",
+//                                 err: err
+//                             });
+//                      else{
+//                         var x = JSON.stringify(updatedata);
+//                         var datax = new Buffer(x).toString('hex');
+//                         let publishData = {address : multichainAddress,streamName : "patient",key : aadharNo.toString(),data : datax};
+//                         Global.publishDataOnMultichain(publishData,(result)=>{
+//                             if(result){
+//                                 return res.send({
+//                                 status: 200,
+//                                 message: "Verify successfully!."
+//                                });
+//                             }
+//                         });
+//
+//                         }
+//                     })
+//                 }
+//                     else {
+//                         if(counter != currDoctor.length)
+//                         next();
+//                         else
+//                         return res.send({
+//                             status: 400,
+//                             message: "Not a valid OTP."
+//                         });
+//                        }
+//                 })
+//             }
+//
+// })
 })
 }
 
@@ -1093,6 +1410,24 @@ var PermisssionDoctor = function(req, res) {
 }
 
 
+
+var recentVisitData =(req,res) =>{
+  var multichainAddress = req.body.multichainAddress;
+  var stream = req.body.stream;
+  var data ={
+   address : multichainAddress,
+   stream : stream
+  }
+  Global.listStreamPublisherItems(data,(result)=>{
+    console.log("result--------------------------",result);
+     if(result){
+       return res.send({status : 200, message : "Patients List",data : result.reverse()});
+}else{
+     return res.send({status : 200, message : "no data ",data : result});
+}
+  });
+
+}
 
 
 var updateDoctorProfile = (req, res) => {
@@ -1333,6 +1668,7 @@ else {
     var data = {
       address : "1P6ADDBnidLj7Xo66gww1ocWXnwhdvpPLcMoMF",
       stream : "Doctor"
+
     }
     Global.listPublisherStreamKeys(data,(result)=>{
       console.log("results--------",result)
@@ -1402,6 +1738,147 @@ var updateDoctorprofile = function(req,res){
 
 
 
+var weeklydata=function(req,res){
+  var hospitalId=req.body.hospitalId;
+  var doctorId=req.body.doctorId;
+  //var ans=new Array(7).fill(0);;
+  var ans=[];
+  var label=[]
+  var x=['Sunday','Monday','Tuesday','Wednesday','Thrusday','Friday','Saturday']
+  var d=new Date();
+     Visit.find({doctorId:doctorId,date:{$lte:Date.now(),$gt:Date.now()-7*24*3600*1000}}).sort({'date':1}).exec(function(err,result){
+
+    if(err) return res.send({status:400,message:'error to fetch!'});
+    console.log('Result::',result);
+    async.forEachLimit(result, 1, (element, next) => {
+      ans.push(element.vc);
+      label.push(x[new Date(element.date).getDay()])
+      console.log(ans,label);
+      next();
+    })
+  })
+}
+
+
+
+var dashBoardData=function(req,res){
+  var doctorId=req.body.doctorId;
+  var ansy=new Array(12).fill(0)
+  var ansm=new Array(30).fill(0);
+  var answ=[];
+  var labely=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  var labelw=['Sun','Mon','Tue','Wed','Thr','Fri','Sat']
+  var x=['Sun','Mon','Tue','Wed','Thr','Fri','Sat']
+  var yearlydata;
+  Visit.find({doctorId:doctorId,date:{$lte:Date.now(),$gt:Date.now()-365*24*3600*1000}}).sort({'date':1}).exec(function(err,result){
+if(err) return res.send({status:400,message:'error to fetch!'});
+async.forEachLimit(result, 1, (element, next) => {
+   var i=Number(new Date(element.date).getMonth());
+   ansy[i]=ansy[i]+Number(element.vc);
+
+   next();
+})
+yearlydata={
+     labely:labely,
+     ansy:ansy
+     }
+     Visit.find({doctorId:doctorId,date:{$lte:Date.now(),$gt:Date.now()-30*24*3600*1000}}).sort({'date':1}).exec(function(err,result){
+     if(err) return res.send({status:400,message:'error to fetch!'});
+     console.log('Result::',result);
+     async.forEachLimit(result, 1, (element, next) => {
+       var i=Number(new Date(element.date).getDate());
+       ansm[i]=ansm[i]+Number(element.vc);
+       next();
+     })
+   var monthlydata={
+     ansm:ansm
+    }
+    Visit.find({doctorId:doctorId,date:{$lte:Date.now(),$gt:Date.now()-7*24*3600*1000}}).sort({'date':1}).exec(function(err,result){
+   if(err) return res.send({status:400,message:'error to fetch!'});
+   async.forEachLimit(result, 1, (element, next) => {
+     answ.push(element.vc);
+     labelw.push(x[new Date(element.date).getDay()])
+     next();
+   })
+   var weeklydata={
+     labelw:labelw,
+     answ:answ
+   }
+   var obj={
+     yearlydata:yearlydata,
+     monthlydata:monthlydata,
+     weeklydata:weeklydata
+   }
+   return res.send({status:200,message:'Data fetch succesfully!',data:obj})
+})
+})
+})
+}
+
+
+
+var getPatientVisit = (req,res)=>{
+var aadharNo = req.body.aadharNo;
+Patient.findOne({aadharNo : aadharNo},{},function(err,result){
+  if(err) return res.send({status : 400, message : "Unable to fetch from db!."});
+  if(result){
+ var data = {
+stream : "visit",
+aadharNo : result.aadharNo
+}
+Global.listStreamKey(data,(result)=>{
+  console.log("resultdata---------------",result);
+if(result){
+   var counter = 0;
+   var responseData = [];
+
+   return res.json({
+                          status: 200,
+                          message: "review data is!.",
+                          data: result,
+                          total: result.length
+                      });
+//      async.forEachLimit(result, 1, (element, next) => {
+//        console.log("result|||||||||||||||||||||||||||||",element);
+// counter++
+//            if (counter == result.length ) {
+//
+//                    responseData.push(element);
+//                    return res.json({
+//                        status: 200,
+//                        message: "review data is!.",
+//                        data: responseData,
+//                        total: responseData.length
+//                    });
+//                    next()
+//
+//         }
+//         else {
+//           console.log("element|||||||||||||||||||||||||||||",element);
+//
+//            responseData.push(element);
+//                    return res.json({
+//                        status: 200,
+//                        message: "review data is!.",
+//                        data: responseData,
+//                        total: result.length
+//                    });
+//                }
+//             })
+// }
+//
+// })
+       }
+   })
+ }
+})
+}
+
+
+
+
+
+
 exports.addPatient = addPatient;
 exports.getAllPatient = getAllPatient;
 exports.doctorSendRequestToAdmin = doctorSendRequestToAdmin;
@@ -1431,3 +1908,9 @@ exports.getDiagonosis = getDiagonosis;
 exports.getDeseas = getDeseas;
 exports.getDoctorDegree = getDoctorDegree;
 exports.getDoctorDepartment = getDoctorDepartment;
+exports.doctorDashboard = doctorDashboard;
+exports.recentVisitData = recentVisitData;
+exports.weeklydata = weeklydata;
+exports.dashBoardData = dashBoardData;
+exports.getPatientVisit = getPatientVisit;
+exports.uploadPrescription = uploadPrescription;

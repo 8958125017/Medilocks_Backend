@@ -23,7 +23,7 @@ var doctorSchema = new Schema({
   address:{type:String},
   description : {type :String},
 	designation:{type:String},
-  hospitalId : {type : String},
+  hospitalId : {type : String,default:null},
   signupOTP : {type :String},
   signupOTPtimeExpire : {type : Date,default:+new Date() + 5*60*1000},
   multichainAddress:{type:String},

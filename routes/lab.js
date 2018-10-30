@@ -18,6 +18,13 @@ router.post('/updateLab',lab.updateLab);
 router.post('/addressGenerate',lab.addressGenerate);
 router.post('/uploadreportsBylab',lab.uploadreportsBylab);
 router.post('/updateLabProfile',lab.updateLabProfile);
+router.post('/viewLabProfile',lab.viewLabProfile);
+
+
+
+
+
+
 
 
 

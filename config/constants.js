@@ -120,12 +120,12 @@ function createPrescription(HTMLdata){
     // </body>
     // </html>`;
 
-// console.log("data",HTMLdata);
    // var name = data.name;
    var prescription = HTMLdata.prescription;
    var diagonosis = HTMLdata.diagonosis;
    var data = HTMLdata.data;
    var patient = HTMLdata.patient;
+   var Patient = patient.data;
    var doctor = HTMLdata.doctor;
   return `<!DOCTYPE html>
 <html>
@@ -219,14 +219,14 @@ function createPrescription(HTMLdata){
                         <div class="row mt-5">
                             <div class="col-sm-6">
                                 <p class="p-name">
-                         ${patient.firstName + ' '+patient.lastName}
+                         ${Patient.firstName + ' '+Patient.lastName}
                                  </p>
                                 <p>
                                     <strong>
                                         Age :
                                     </strong>
                                     <span>
-                                        ${patient.age}
+                                        ${Patient.age}
                                     </span>
                                 </p>
                                 <p>
@@ -234,7 +234,7 @@ function createPrescription(HTMLdata){
                                         Gender :
                                     </strong>
                                     <span>
-                                        ${patient.gender}
+                                        ${Patient.gender}
                                     </span>
                                 </p>
                                 <p>
@@ -242,7 +242,7 @@ function createPrescription(HTMLdata){
                                         City :
                                     </strong>
                                     <span>
-                                        ${patient.city}
+                                        ${Patient.city}
                                     </span>
                                 </p>
                                 <div class="row"></div>
@@ -419,8 +419,8 @@ var obj = { gmailSMTPCredentials:gmailSMTPCredentials,
     doctorCategory :doctorCategory,
     BloodCategory :BloodCategory,
     DoctorDegree:DoctorDegree,
-    supportEmailId: 'kavipal766@gmail.com', //Support Email Id to send mail signup and login and forgot password
-    supportEmailIdpass: 'backtrack@123', //Support Email Id passoword
+    supportEmailId: 'vivekshengupta011@gmail.com', //Support Email Id to send mail signup and login and forgot password
+    supportEmailIdpass: 'm*nukumar', //Support Email Id passoword
     supportEmailIdService: 'gmail',
     DoctorDepartment:DoctorDepartment
 

@@ -31,8 +31,8 @@ var labSendRequestToAdmin=function(req,res){
   var address = req.body.address;
   var description = req.body.description;
   var filePath=req.body.image;
-  var from = req.body.from;
-  var to = req.body.to;
+  var close = req.body.close;
+  var open = req.body.open;
 
   var hospitalMultichainAddress = req.body.hospitalMultichainAddress;
 
@@ -73,8 +73,8 @@ var labSendRequestToAdmin=function(req,res){
                   address : address,
                   description : description,
                   image:data,
-                  "avaliablity.open":from,
-                  "avaliablity.close  ":to,
+                  "avaliablity.open":open,
+                  "avaliablity.close  ":close,
                   password:hash12,
                   multichainAddress: result,
                   hospitalMultichainAddress : hospitalMultichainAddress ? hospitalMultichainAddress : ''
@@ -87,9 +87,40 @@ var labSendRequestToAdmin=function(req,res){
             })
           })
         }
-    }
+
+
+        else {
+          Global.fileUpload(filePath,(data) => {
+          var hash12 = hash;
+          Global.getNewAddressandpermissionOnMultichain((result)=>{
+          var obj = {
+              name:name,
+              contactNo:contactNo,
+              email:email,
+              city:city,
+              license:license,
+              address : address,
+              description : description,
+              image:data,
+              "avaliablity.open":open,
+              "avaliablity.close  ":close,
+              password:hash12,
+              multichainAddress: result,
+              hospitalMultichainAddress : hospitalMultichainAddress ? hospitalMultichainAddress : ''
+          }
+          console.log("Lab record"+JSON.stringify(obj));
+          Lab.create(obj,function(err, data){
+              if(err) return res.send({status : 400, message : "failed to send request to admin!",error:err});
+              return res.send({status : 200, message : "request is send successfully!", data : data});
+          });
+          })
+          })
+        }
+
+
+        }
+    })
   })
-})
 }
 })
 }
@@ -457,6 +488,22 @@ var updateLabProfile = function(req,res){
 
   }
 
+
+
+
+
+var viewLabProfile=function(req,res){
+  var labid = req.body.labid;
+  condition = {_id:labid}
+  Lab.find(condition,function(err,data){
+    if(err) return res.send({status : 400, message : "failed to fetch details!",error:err});
+    return res.send({status : 200, message : "Lab Detail is fetch successfully!", data : data});
+
+  })
+
+}
+
+
 exports.updateLab=updateLab;
 exports.labSendRequestToAdmin=labSendRequestToAdmin;
 exports.viewallLab=viewallLab;
@@ -465,6 +512,12 @@ exports.uploadbills = uploadbills;
 exports.addressGenerate = addressGenerate;
 exports.uploadreportsBylab = uploadreportsBylab;
 exports.updateLabProfile = updateLabProfile;
+exports.viewLabProfile = viewLabProfile;
+
+
+
+
+
 
 
 

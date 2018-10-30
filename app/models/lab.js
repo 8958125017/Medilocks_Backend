@@ -6,8 +6,9 @@ var labSchema=new Schema({
   email:{ type:String, unique:true},
   city:String,
   password:String,
-  license:String,
+  license:{type:String, unique:true},
   image:String,
+  OTP:String,
   avaliablity : {
     open:{type:String},
     close:{type:String}

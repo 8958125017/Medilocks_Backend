@@ -28,8 +28,8 @@
 
   var patientRoute = require('./routes/patient.js')
   var hospital = require('./routes/hospital.js')
-  var  pharmacy = require('./routes/pharmacy.js')
-  var  lab = require('./routes/lab.js')
+  var pharmacy = require('./routes/pharmacy.js')
+  var lab = require('./routes/lab.js')
 
 
 
